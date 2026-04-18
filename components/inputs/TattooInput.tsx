@@ -3,6 +3,7 @@ import { useRef } from "react";
 import { HE } from "@/i18n/he";
 import { QuestionnaireAnswers } from "@/lib/types";
 import QuestionSection from "@/components/questionnaire/QuestionSection";
+import { compressImage } from "@/lib/imageUtils";
 
 interface Props {
   value: string[];
@@ -14,10 +15,9 @@ interface Props {
 export default function TattooInput({ value, onChange, answers, onAnswersChange }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleFile = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => onChange([...value, e.target?.result as string]);
-    reader.readAsDataURL(file);
+  const handleFile = async (file: File) => {
+    const compressed = await compressImage(file);
+    onChange([...value, compressed]);
   };
 
   return (
