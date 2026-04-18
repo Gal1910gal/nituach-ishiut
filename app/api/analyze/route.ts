@@ -3,6 +3,19 @@ import { callGemini } from "@/lib/gemini";
 import { buildPromptParts } from "@/lib/prompt";
 import { AnalysisInputs } from "@/lib/types";
 
+function extractJson(raw: string): string {
+  // 1. Try ```json ... ``` block
+  const codeBlock = raw.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  if (codeBlock?.[1]) return codeBlock[1].trim();
+
+  // 2. Try to find outermost { ... }
+  const start = raw.indexOf("{");
+  const end = raw.lastIndexOf("}");
+  if (start >= 0 && end > start) return raw.slice(start, end + 1);
+
+  return raw.trim();
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { subjectName, inputs }: { subjectName: string; inputs: AnalysisInputs } = await req.json();
@@ -10,10 +23,16 @@ export async function POST(req: NextRequest) {
     const parts = buildPromptParts(subjectName, inputs);
     const raw = await callGemini(parts);
 
-    // Extract JSON from response (may be wrapped in ```json ... ```)
-    const jsonMatch = raw.match(/```json\s*([\s\S]*?)\s*```/) ?? raw.match(/(\{[\s\S]*\})/);
-    const jsonStr = jsonMatch?.[1] ?? raw;
-    const analysis = JSON.parse(jsonStr);
+    const jsonStr = extractJson(raw);
+
+    let analysis;
+    try {
+      analysis = JSON.parse(jsonStr);
+    } catch {
+      // Last resort: log the raw response to help debugging
+      console.error("JSON parse failed. Raw response (first 500 chars):", jsonStr.slice(0, 500));
+      throw new Error("Gemini returned invalid JSON. Raw: " + jsonStr.slice(0, 200));
+    }
 
     return NextResponse.json(analysis);
   } catch (err) {
