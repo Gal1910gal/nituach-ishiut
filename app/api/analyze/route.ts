@@ -3,6 +3,11 @@ import { callGemini } from "@/lib/gemini";
 import { buildPromptParts } from "@/lib/prompt";
 import { AnalysisInputs } from "@/lib/types";
 
+// Allow up to 10MB request body (images as base64)
+export const config = {
+  api: { bodyParser: { sizeLimit: "10mb" } },
+};
+
 function extractJson(raw: string): string {
   // 1. Try ```json ... ``` block
   const codeBlock = raw.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
